@@ -27,7 +27,7 @@ def url_verification():
 
 @app.event("app_home_opened")
 def update_home_tab(client, event, logger):
-    # print(event)
+    print(event)
     try:
         client.views_publish(
             user_id=event["user"],
@@ -58,7 +58,7 @@ def handle_message_event(event):
             if event['message']['text'] == 'Alarm has been deleted.':
                 content = event['previous_message']['blocks'][1]['fields'][0]['text'][11:]
                 alarm_date = event['previous_message']['blocks'][1]['fields'][2]['text'][21:]
-                interval = event['previous_message']['blocks'][1]['fields'][3]['text'][12:]
+                alarm_dict = service.get_conditional_alarm(db, content, alarm_date)
                 service.delete_button_click_response(db, alarm_date, content)
     
 
