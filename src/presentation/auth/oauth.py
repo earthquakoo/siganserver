@@ -43,11 +43,14 @@ def success_callback(args: SuccessArgs) -> BoltResponse:
         "slack_id": installation.user_id,
         "channel_id": response['channel'],
         "channel_name": "SiganBot",
+        "access_token": installation.bot_token,
+        "user_token": installation.user_token
         }
     db = next(get_db())
     service.bot_info_init(db, user_info)
-        
-    return BoltResponse(status=200, body="Thanks!")
+    
+    return args.default.success(args)    
+    # return BoltResponse(status=200, body="Thanks!")
 
 
 def failure_callback(args: FailureArgs) -> BoltResponse:

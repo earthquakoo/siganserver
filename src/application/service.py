@@ -116,6 +116,16 @@ def get_client(db: Session):
     return client
 
 
+def get_user_id(db: Session):
+    client = get_client(db)
+    token = db.query(models.Token).first()
+    response = client.users_identity(token=token.user_token)
+    
+    user_info = db.query(models.User).filter(models.User.slack_id==response['user']['id']).first()
+    
+    return user_info.user_id
+
+
 def list_scheduled_messages(db: Session, channel_id: str, scheduled_message_id: str):
     client = get_client(db)
     response = client.chat_scheduledMessages_list(channel=channel_id)
@@ -175,9 +185,12 @@ def delete_button_click_response(db: Session, alarm_date: str, content: str):
                 models.Alarm.alarm_date==alarm_date,
                 )
             ).all()
+    
+    user_id = get_user_id(db)
+    
     alarm_list = utils.sql_obj_list_to_dict_list(alarm)
     for alarm_obj in alarm_list:
-        if alarm_obj['content'] == content:
+        if alarm_obj['content'] == content and alarm_obj['user_id']==user_id:
             delete_alarm(db, alarm_obj['alarm_id'])
 
 

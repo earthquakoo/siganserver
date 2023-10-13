@@ -15,6 +15,8 @@ class User(Base):
     slack_id = Column(String(100), nullable=False)
     channel_id = Column(String(100), nullable=False)
     channel_name = Column(String(100), nullable=False)
+    access_token = Column(String(100), nullable=True)
+    user_token = Column(String(100), nullable=True)
 
 
 class Alarm(Base):
