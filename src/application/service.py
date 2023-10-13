@@ -110,8 +110,8 @@ def delete_alarm(db: Session, alarm_id: int):
 
 
 def get_client(db: Session):
-    bot_info = db.query(models.UserInfo).first()
-    client = WebClient(token=bot_info.access_token)
+    token = db.query(models.Token).first()
+    client = WebClient(token=token.access_token)
     return client
 
 
@@ -195,7 +195,7 @@ def delete_confirm_alarm(db: Session, alarm_id: int):
 
 def bot_info_init(db: Session, bot_info: dict):
     
-    bot_info_init = models.UserInfo(**bot_info)
+    bot_info_init = models.User(**bot_info)
     
     db.add(bot_info_init)
     db.commit()

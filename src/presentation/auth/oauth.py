@@ -27,7 +27,9 @@ def success_callback(args: SuccessArgs) -> BoltResponse:
     
     installation = args.installation
     client = args.request.context.client
-    
+    print(installation.bot_token)
+    print(installation.user_token)
+
     try:
         response = client.chat_postMessage(
             token=installation.bot_token,
@@ -37,13 +39,13 @@ def success_callback(args: SuccessArgs) -> BoltResponse:
     except SlackApiError as e:
         return e.response['error']
     
-    bot_info = {
+    user_info = {
+        "slack_id": installation.user_id,
         "channel_id": response['channel'],
         "channel_name": "SiganBot",
-        "access_token": installation.bot_token
         }
-    
-    service.bot_info_init(next(get_db()), bot_info)
+    db = next(get_db())
+    service.bot_info_init(db, user_info)
         
     return BoltResponse(status=200, body="Thanks!")
 
@@ -60,7 +62,7 @@ app = App(
         client_id=os.environ.get("SLACK_CLIENT_ID"),
         client_secret=os.environ.get("SLACK_CLIENT_SECRET"),
         scopes=["chat:write", "channels:read", "channels:history", "groups:read", "im:history", "im:read", "mpim:read"],
-        user_scopes=[],
+        user_scopes=["identity.basic"],
         redirect_uri=None,
         install_path="/slack/install",
         redirect_uri_path="/slack/oauth_redirect",

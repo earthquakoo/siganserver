@@ -40,7 +40,7 @@ def update_home_tab(client, event, logger):
 
 @app.event("message")
 def handle_message_event(event):
-    # print(event)
+    print(event)
     db = next(get_db())
     if event['type'] == "message" and "bot_profile" in event:
         if event['bot_profile']['name'] == "Sigan":
