@@ -84,6 +84,7 @@ def delete_alarm(db: Session, alarm_id: int):
     if post_at is None:
         if alarm_dict['confirm_alarm_date']:
             delete_confirm_alarm(db, alarm_id)
+            
         repositories.delete_alarm(db, alarm)
         return {"success": True, "delete_alarm": alarm_dict}
     
