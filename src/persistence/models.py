@@ -12,11 +12,10 @@ class User(Base):
     __tablename__ = "user"
     
     user_id = Column(Integer, primary_key=True, autoincrement=True)
-    slack_id = Column(String(100), nullable=False)
+    team_id = Column(String(100), nullable=False)
     channel_id = Column(String(100), nullable=False)
     channel_name = Column(String(100), nullable=False)
     access_token = Column(String(100), nullable=True)
-    user_token = Column(String(100), nullable=True)
 
 
 class Alarm(Base):
@@ -31,13 +30,5 @@ class Alarm(Base):
     scheduled_message_id = Column(String(100), nullable=True)
     slack_channel_name = Column(String(100), nullable=True)
     slack_channel_id = Column(String(100), nullable=True)
-    confirm_alarm_date = Column(String(100), nullable=True)
+    confirm_alarm_date = Column(DateTime, nullable=True)
     sub_scheduled_message_id = Column(String(100), nullable=True)
-    
-    
-class Token(Base):
-    __tablename__ = "token"
-    
-    id = Column(Integer, primary_key=True)
-    access_token = Column(String(100), nullable=True)
-    user_token = Column(String(100), nullable=True)

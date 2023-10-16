@@ -15,7 +15,7 @@ from slack_sdk.oauth.state_store import FileOAuthStateStore
 from slack_sdk.errors import SlackApiError
 
 from src.infrastructure.database import get_db
-import src.application.service as service
+import src.persistence.repositories as repositories
 
 load_dotenv('.env')
 
@@ -24,33 +24,30 @@ load_dotenv('.env')
 
 
 def success_callback(args: SuccessArgs) -> BoltResponse:
-    
-    installation = args.installation
+    user_id = args.installation.user_id
+    bot_token = args.installation.bot_token
+    team_id = args.installation.team_id
     client = args.request.context.client
-    print(installation.bot_token)
-    print(installation.user_token)
 
     try:
         response = client.chat_postMessage(
-            token=installation.bot_token,
-            channel=installation.user_id, 
-            text="Thanks for installing sigan app!"
+            token=bot_token,
+            channel=user_id, 
+            text=f"Thanks for installing sigan app! \n You can enter the ID {team_id} required when installing the Sigan CLI."
         )
     except SlackApiError as e:
         return e.response['error']
     
     user_info = {
-        "slack_id": installation.user_id,
+        "team_id": team_id,
         "channel_id": response['channel'],
         "channel_name": "SiganBot",
-        "access_token": installation.bot_token,
-        "user_token": installation.user_token
+        "access_token": bot_token,
         }
     db = next(get_db())
-    service.bot_info_init(db, user_info)
+    repositories.bot_info_init(db, user_info)
     
-    return args.default.success(args)    
-    # return BoltResponse(status=200, body="Thanks!")
+    return args.default.success(args)
 
 
 def failure_callback(args: FailureArgs) -> BoltResponse:
@@ -65,7 +62,7 @@ app = App(
         client_id=os.environ.get("SLACK_CLIENT_ID"),
         client_secret=os.environ.get("SLACK_CLIENT_SECRET"),
         scopes=["chat:write", "channels:read", "channels:history", "groups:read", "im:history", "im:read", "mpim:read"],
-        user_scopes=["identity.basic"],
+        user_scopes=[""],
         redirect_uri=None,
         install_path="/slack/install",
         redirect_uri_path="/slack/oauth_redirect",

@@ -43,7 +43,7 @@ def repeat_schedule_message(db: Session, repeat_alarm: dict):
         if deadline_date < new_alarm_date:
             return None
     
-    client = get_client(db)
+    client = get_client(db, repeat_alarm['user_id'])
     
     try:
         schedule_message = client.chat_scheduleMessage(
@@ -80,7 +80,7 @@ def delete_alarm(db: Session, alarm_id: int):
             repositories.delete_alarm(db, alarm)
             return {"success": True, "delete_alarm": alarm_dict}
     
-    post_at = list_scheduled_messages(db, alarm_dict['slack_channel_id'], alarm_dict['scheduled_message_id'])
+    post_at = list_scheduled_messages(db, alarm_dict['user_id'], alarm_dict['slack_channel_id'], alarm_dict['scheduled_message_id'])
     if post_at is None:
         if alarm_dict['confirm_alarm_date']:
             delete_confirm_alarm(db, alarm_id)
@@ -92,7 +92,7 @@ def delete_alarm(db: Session, alarm_id: int):
     if alarm_date - timedelta(minutes=5) < datetime.now():
         raise exceptions.AlarmConditionalFalse()
     
-    client = get_client(db)
+    client = get_client(db, alarm_dict['user_id'])
     
     try:
         client.chat_deleteScheduledMessage(
@@ -110,24 +110,21 @@ def delete_alarm(db: Session, alarm_id: int):
     return {"success": True}
 
 
-def get_client(db: Session):
-    token = db.query(models.Token).first()
-    client = WebClient(token=token.access_token)
+def get_client(db: Session, user_id: int):
+    user_info = db.query(models.User).filter(models.User.user_id==user_id).first()
+    client = WebClient(token=user_info.access_token)
     return client
 
 
-def get_user_id(db: Session):
-    client = get_client(db)
-    token = db.query(models.Token).first()
-    response = client.users_identity(token=token.user_token)
-    
-    user_info = db.query(models.User).filter(models.User.slack_id==response['user']['id']).first()
-    
+def get_user_id(db: Session, team_id: str):
+    user_info = db.query(models.User).filter(models.User.team_id==team_id).first()
+    if user_info is None:
+        return None
     return user_info.user_id
 
 
-def list_scheduled_messages(db: Session, channel_id: str, scheduled_message_id: str):
-    client = get_client(db)
+def list_scheduled_messages(db: Session, user_id: int, channel_id: str, scheduled_message_id: str):
+    client = get_client(db, user_id)
     response = client.chat_scheduledMessages_list(channel=channel_id)
     if response is None:
         return None
@@ -137,20 +134,23 @@ def list_scheduled_messages(db: Session, channel_id: str, scheduled_message_id: 
             return message['post_at']
 
 
-def get_conditional_alarm(db: Session, content: str, alarm_date: str):
+def get_conditional_alarm(db: Session, user_id: int, content: str, deadline: str, alarm_date: str, interval: str):
     alarm = db.query(models.Alarm).\
         filter(
             and_(
+                models.Alarm.user_id==user_id,
                 models.Alarm.content==content,
+                models.Alarm.deadline==deadline,
                 models.Alarm.alarm_date==alarm_date,
+                models.Alarm.interval==interval,
                 )
             ).first()
     
     return utils.sql_obj_to_dict(alarm)
     
 
-def click_button_response(db: Session, data: dict):
-    client = get_client(db)
+def click_button_response(db: Session, data: dict, user_id: int):
+    client = get_client(db, user_id)
     
     if data['actions'][0]['text']['text'] == "Delete":
         try:
@@ -177,40 +177,14 @@ def click_button_response(db: Session, data: dict):
             return {"success": False, "error": e.response["error"]}
 
 
-def delete_button_click_response(db: Session, alarm_date: str, content: str):
-    alarm = db.query(models.Alarm).\
-        filter(
-            and_(
-                models.Alarm.content==content,
-                models.Alarm.alarm_date==alarm_date,
-                )
-            ).all()
-    
-    user_id = get_user_id(db)
-    
-    alarm_list = utils.sql_obj_list_to_dict_list(alarm)
-    for alarm_obj in alarm_list:
-        if alarm_obj['content'] == content and alarm_obj['user_id']==user_id:
-            delete_alarm(db, alarm_obj['alarm_id'])
-
-
 def delete_confirm_alarm(db: Session, alarm_id: int):
     alarm = db.query(models.Alarm).filter(models.Alarm.alarm_id==alarm_id).first()
     if not alarm:
         raise exceptions.AlarmNotFoundException(alarm_id=alarm_id)
     
-    client = get_client(db)
+    client = get_client(db, alarm.user_id)
 
     client.chat_deleteScheduledMessage(
         channel=alarm.slack_channel_id,
         scheduled_message_id=alarm.sub_scheduled_message_id
     )
-   
-
-def bot_info_init(db: Session, bot_info: dict):
-    
-    bot_info_init = models.User(**bot_info)
-    
-    db.add(bot_info_init)
-    db.commit()
-    db.refresh(bot_info_init)
