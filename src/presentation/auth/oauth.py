@@ -20,7 +20,7 @@ import src.persistence.repositories as repositories
 load_dotenv('.env')
 
 
-# logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG)
 
 
 def success_callback(args: SuccessArgs) -> BoltResponse:
