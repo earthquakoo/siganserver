@@ -15,5 +15,4 @@ class DBSettings:
     
     DATABASE_URL = f"mysql+pymysql://{MYSQL_USERNAME}:{MYSQL_PASSWORD}@{MYSQL_HOST}:3306/{MYSQL_DB_NAME}"
 
-
 settings = DBSettings()

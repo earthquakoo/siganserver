@@ -1,5 +1,4 @@
 import json
-from dotenv import load_dotenv
 
 from slack_bolt.adapter.fastapi import SlackRequestHandler
 from fastapi import APIRouter, Request
@@ -9,14 +8,17 @@ sys.path.append('.')
 
 from src.infrastructure.database import get_db
 from src.presentation.auth.oauth import app
-import src.application.blocks as blocks
+import src.application.utils.blocks as blocks
 import src.application.service as service
-
-
-load_dotenv('.env')
-
+import src.application.utils.utils as utils
 
 app_handler = SlackRequestHandler(app)
+
+
+events_router = APIRouter(
+    prefix="",
+    tags=["events"]
+)
 
 
 @app.event("url_verification")
@@ -47,15 +49,11 @@ def handle_message_event(event):
                 deadline = event['blocks'][1]['fields'][1]['text'][12:]
                 alarm_date = event['blocks'][1]['fields'][2]['text'][21:]
                 interval = event['blocks'][1]['fields'][3]['text'][12:]
-                print(deadline, alarm_date, interval)
-                user_id = service.get_user_id(db, event['team'])
-                alarm_dict = service.get_conditional_alarm(db, user_id, event['text'], deadline, alarm_date, interval)
+                user_id = utils.get_user_id(db, event['team'])
+                alarm_dict = utils.get_conditional_alarm(db, user_id, event['text'], deadline, alarm_date, interval)
                 
                 if alarm_dict['interval'] is not None:
-                    try:
-                        service.repeat_schedule_message(db, alarm_dict)
-                    except Exception as e:
-                        return {"success": False, "error": e.error}
+                    service.repeat_schedule_message(db, alarm_dict, event['team'])
 
     if "subtype" in event:
         if event['subtype'] == "message_changed" and event['message']['bot_profile']['name'] == "Sigan":
@@ -64,15 +62,10 @@ def handle_message_event(event):
                 deadline = event['previous_message']['blocks'][1]['fields'][1]['text'][12:]
                 alarm_date = event['previous_message']['blocks'][1]['fields'][2]['text'][21:]
                 interval = event['previous_message']['blocks'][1]['fields'][3]['text'][12:]
-                user_id = service.get_user_id(db, event['message']['team'])
-                alarm_dict = service.get_conditional_alarm(db, user_id, content, deadline, alarm_date, interval)
-                service.delete_alarm(db, alarm_dict['alarm_id'])
-    
-
-events_router = APIRouter(
-    prefix="",
-    tags=["events"]
-)
+                user_id = utils.get_user_id(db, event['message']['team'])
+                alarm_dict = utils.get_conditional_alarm(db, user_id, content, deadline, alarm_date, interval)
+                alarm_dict['team_id'] = event['message']['team']
+                service.delete_alarm(db, alarm_dict)
 
 
 @events_router.post("/slack/click-button")
@@ -81,8 +74,7 @@ async def post_message(request: Request):
     payload = json.loads(form_data.get("payload"))
     db = next(get_db())
     print(payload)
-    user_id = service.get_user_id(db, payload['team']['id'])
-    service.click_button_response(db, payload, user_id)
+    service.click_button_response(db, payload, payload['team']['id'])
 
     return "OK"
 

@@ -2,8 +2,6 @@ import sys
 sys.path.append('.')
 
 import os, logging
-from dotenv import load_dotenv
-
 from fastapi import Request, APIRouter
 
 from slack_bolt import App, BoltResponse
@@ -17,10 +15,13 @@ from slack_sdk.errors import SlackApiError
 from src.infrastructure.database import get_db
 import src.persistence.repositories as repositories
 
-load_dotenv('.env')
+oauth_router = APIRouter(
+    prefix="",
+    tags=["oauth"]
+)
 
 
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 
 
 def success_callback(args: SuccessArgs) -> BoltResponse:
@@ -32,8 +33,9 @@ def success_callback(args: SuccessArgs) -> BoltResponse:
     try:
         response = client.chat_postMessage(
             token=bot_token,
-            channel=user_id, 
-            text=f"Thanks for installing sigan app! \n You can enter the ID {team_id} required when installing the Sigan CLI."
+            channel=user_id,
+            text=f"Thanks for installing sigan app!\nYour team id is as follows.```{team_id}```\nComplete the register by entering the command in the Sigan CLI APP and entering the corresponding team id.```sigan register```",
+            mrkdwn=True,
         )
     except SlackApiError as e:
         return e.response['error']
@@ -72,12 +74,6 @@ app = App(
 )
 
 app_handler = SlackRequestHandler(app)
-
-
-oauth_router = APIRouter(
-    prefix="",
-    tags=["oauth"]
-)
 
 
 @oauth_router.get("/slack/install")

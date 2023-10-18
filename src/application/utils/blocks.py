@@ -32,8 +32,8 @@ def alarm_blocks(alarm: dict):
 		{
 			"type": "section",
 			"text": {
-				"type": "plain_text",
-				"text": "Are you sure you want to delete the alarm?",
+				"type": "mrkdwn",
+				"text": "If you have checked the alarm, press *Check* or *Delete* button to delete the alarm",
 				"emoji": True
 			}
 		},
@@ -108,7 +108,6 @@ def click_check_button_blocks(text: str):
 		},
 	]
     return blocks
-
 
 
 def app_home_opened_view_blocks():
