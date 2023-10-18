@@ -28,6 +28,7 @@ app.include_router(slack_events)
 app.include_router(oauth_router)
 app.add_exception_handler(exceptions.BaseCustomException, exception_handler)
 
+
 @app.get("/")
 def root():
     return {"message": "hello to the root"}
