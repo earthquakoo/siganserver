@@ -9,7 +9,7 @@ import src.application.exceptions.exceptions as exceptions
 import src.persistence.models as models
 import src.presentation.server.schemas as schemas
 import src.application.service as service
-import src.application.utils as utils
+import src.application.utils.utils as utils
 
 router = APIRouter(
     prefix="/slack",
