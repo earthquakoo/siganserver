@@ -32,8 +32,8 @@ def alarm_blocks(alarm: dict):
 		{
 			"type": "section",
 			"text": {
-				"type": "mrkdwn",
-				"text": "If you have checked the alarm, press *Check* or *Delete* button to delete the alarm",
+				"type": "plain_text",
+				"text": "If you have checked the alarm, press Check or Delete button to delete the alarm",
 				"emoji": True
 			}
 		},
