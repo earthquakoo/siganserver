@@ -383,7 +383,8 @@ def click_button_response(db: Session, data: dict, team_id: str):
     
 def register_success_alarm(db: Session, team_id: str):
     client = utils.get_client(db, team_id)
-    channel_id = utils.get_bot_channel(db, "SiganBot")
+    slack_channel_name = "SiganBot"
+    channel_id = utils.get_bot_channel(db, slack_channel_name)
     client.chat_postMessage(
         channel=channel_id,
         text="Registration is complete. Feel free to use the sigan app!",

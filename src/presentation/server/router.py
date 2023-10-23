@@ -82,7 +82,8 @@ def change_interval(data: schemas.ChangeIntervalIn, db: Session = Depends(get_db
 
 
 @router.post('/register', status_code=status.HTTP_200_OK, response_model=schemas.RegisterResponse)
-def register(data: dict, db: Session = Depends(get_db)):
+def register(data: schemas.RegisterResponse, db: Session = Depends(get_db)):
+    data = data.model_dump()
 
     user_info = db.query(models.User).filter(models.User.team_id==data['team_id']).first()
     if not user_info:
