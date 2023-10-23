@@ -21,14 +21,15 @@ load_dotenv('.env')
 
 def create_alarm(db: Session, alarm: dict):
     post_time = datetime.strptime(alarm['alarm_date'], '%Y/%m/%d %H:%M:%S')
+    user_info = utils.get_user_info(db, alarm['team_id'])
     
     if alarm['interval']:
         alarm['alarm_date'] = alarm['alarm_date'].split(" ")[1][:5]
     
     if alarm['slack_channel_name'] == "SiganBot":
-        channel_id = utils.get_bot_channel(db, alarm['slack_channel_name'])
+        channel_id = user_info.channel_id
     else:
-        channel_id = utils.get_channel_id(db, alarm['slack_channel_name'], alarm['team_id'])
+        channel_id = utils.get_channel_id_from_channel_name(db, alarm['slack_channel_name'], alarm['team_id'])
     
     if channel_id is None:
         raise exceptions.SlackChannelNotFound()
@@ -46,7 +47,7 @@ def create_alarm(db: Session, alarm: dict):
         return {"success": False, "detail": e.response['error']}
     
     new_alarm = {
-        "user_id": utils.get_user_id(db, alarm['team_id']),
+        "user_id": user_info.user_id,
         "content": alarm['content'],
         "deadline": alarm['deadline'],
         "alarm_date": alarm['alarm_date'],
@@ -58,7 +59,7 @@ def create_alarm(db: Session, alarm: dict):
     }
     
     if new_alarm['confirm_alarm_date']:
-        new_alarm['sub_scheduled_message_id'] = create_confirm_alarm(db, alarm)
+        new_alarm['sub_scheduled_message_id'] = create_confirm_alarm(db, new_alarm)
     
     repositories.create_alarm(db, new_alarm)
     
@@ -284,26 +285,13 @@ def change_interval(db: Session, data: dict):
     return {"success": True, "user_id": new_alarm['alarm']['user_id']}
 
 
-def match_team_id(db: Session, team_id: str):
-    user_info = db.query(models.User).filter(models.User.team_id==team_id).first()
-    
-    if not user_info:
-        raise exceptions.TeamIdNotMatch()
-    
-    return user_info.team_id
-
-
 def create_confirm_alarm(db: Session, alarm: dict):
     post_time = alarm['confirm_alarm_date']
-    if alarm['slack_channel_name'] == "SiganBot":
-        channel_id = utils.get_bot_channel(db, alarm['slack_channel_name'])
-    else:
-        channel_id = utils.get_channel_id(db, alarm['slack_channel_name'])
     
     client = utils.get_client(db, alarm['team_id'])
     
     response = client.chat_scheduleMessage(
-        channel = channel_id,
+        channel = alarm['slack_channel_id'],
         text = alarm['content'],
         blocks = blocks.alarm_blocks(alarm),
         post_at = int(post_time.timestamp()),
@@ -383,9 +371,8 @@ def click_button_response(db: Session, data: dict, team_id: str):
     
 def register_success_alarm(db: Session, team_id: str):
     client = utils.get_client(db, team_id)
-    slack_channel_name = "SiganBot"
-    channel_id = utils.get_bot_channel(db, slack_channel_name)
+    user_info = utils.get_user_info(db, team_id)
     client.chat_postMessage(
-        channel=channel_id,
+        channel=user_info.channel_id,
         text="Registration is complete. Feel free to use the sigan app!",
     )

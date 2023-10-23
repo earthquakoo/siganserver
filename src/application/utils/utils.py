@@ -9,15 +9,15 @@ import src.utils.global_utils as global_utils
 import src.persistence.models as models
 
 
+def get_user_info(db: Session, team_id: str):
+    user_info = db.query(models.User).filter(models.User.team_id==team_id).first()
+    return user_info
+
+
 def get_client(db: Session, team_id: str):
     user_info = db.query(models.User).filter(models.User.team_id==team_id).first()
     client = WebClient(token=user_info.access_token)
     return client
-
-
-def get_user_id(db: Session, team_id: str):    
-    user_info = db.query(models.User).filter(models.User.team_id==team_id).first()
-    return user_info.user_id
 
 
 def list_scheduled_messages(db: Session, channel_id: str, scheduled_message_id: str, team_id: str):
@@ -31,7 +31,7 @@ def list_scheduled_messages(db: Session, channel_id: str, scheduled_message_id: 
             return message['post_at']
 
 
-def get_channel_id(db: Session, channel_name: str, team_id: str):
+def get_channel_id_from_channel_name(db: Session, channel_name: str, team_id: str):
     client = get_client(db, team_id)
     channels = client.conversations_list(types="public_channel,private_channel")["channels"]
     for channel in channels:
@@ -39,11 +39,6 @@ def get_channel_id(db: Session, channel_name: str, team_id: str):
             return channel["id"]
     
     return None
-
-
-def get_bot_channel(db: Session, channel_name: str):
-    channel = db.query(models.User).filter(models.User.channel_name==channel_name).first()
-    return channel.channel_id
 
 
 def get_all_alarms(db: Session, user_id: str):

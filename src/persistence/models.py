@@ -13,7 +13,6 @@ class User(Base):
     user_id = Column(Integer, primary_key=True, autoincrement=True)
     team_id = Column(String(50), nullable=False)
     channel_id = Column(String(50), nullable=False)
-    channel_name = Column(String(50), nullable=False)
     access_token = Column(String(100), nullable=True)
 
 

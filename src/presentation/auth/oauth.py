@@ -43,7 +43,6 @@ def success_callback(args: SuccessArgs) -> BoltResponse:
     user_info = {
         "team_id": team_id,
         "channel_id": response['channel'],
-        "channel_name": "SiganBot",
         "access_token": bot_token,
         }
     db = next(get_db())

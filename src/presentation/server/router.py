@@ -39,7 +39,8 @@ def get_alarm(data: schemas.AlarmGetIn, db: Session = Depends(get_db)):
     data = data.model_dump()
 
     if data['team_id'] is not None:
-        data['user_id'] = utils.get_user_id(db, data['team_id'])
+        user_info = utils.get_user_info(db, data['team_id'])
+        data['user_id'] = user_info.user_id
 
     alarm = utils.get_all_alarms(db, data['user_id'])
     return schemas.AlarmShowResponse(alarm=alarm)
@@ -82,11 +83,10 @@ def change_interval(data: schemas.ChangeIntervalIn, db: Session = Depends(get_db
 
 
 @router.post('/register', status_code=status.HTTP_200_OK, response_model=schemas.RegisterResponse)
-def register(data: schemas.RegisterResponse, db: Session = Depends(get_db)):
-    data = data.model_dump()
+def register(data: dict, db: Session = Depends(get_db)):
 
-    user_info = db.query(models.User).filter(models.User.team_id==data['team_id']).first()
-    if not user_info:
+    user_info = utils.get_user_info(db, data['team_id'])
+    if user_info is None:
         raise exceptions.TeamIdNotMatch()
     service.register_success_alarm(db, data['team_id'])
     return schemas.RegisterResponse(team_id=user_info.team_id)

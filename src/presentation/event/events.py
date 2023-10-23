@@ -46,11 +46,12 @@ def handle_message_event(event):
     if event['type'] == "message" and "bot_profile" in event:
         if event['bot_profile']['name'] == "Sigan":
             if event['blocks'][0]['type'] == 'header':
+                user_info = utils.get_user_info(db, event['team'])
+                
                 deadline = event['blocks'][1]['fields'][1]['text'][12:]
                 alarm_date = event['blocks'][1]['fields'][2]['text'][21:]
                 interval = event['blocks'][1]['fields'][3]['text'][12:]
-                user_id = utils.get_user_id(db, event['team'])
-                alarm_dict = utils.get_conditional_alarm(db, user_id, event['text'], deadline, alarm_date, interval)
+                alarm_dict = utils.get_conditional_alarm(db, user_info.user_id, event['text'], deadline, alarm_date, interval)
                 
                 if alarm_dict['interval'] is not None:
                     service.repeat_schedule_message(db, alarm_dict, event['team'])
@@ -58,12 +59,13 @@ def handle_message_event(event):
     if "subtype" in event:
         if event['subtype'] == "message_changed" and event['message']['bot_profile']['name'] == "Sigan":
             if event['message']['text'] == 'Alarm has been deleted.':
+                user_info = utils.get_user_info(db, event['message']['team'])
+                
                 content = event['previous_message']['blocks'][1]['fields'][0]['text'][11:]
                 deadline = event['previous_message']['blocks'][1]['fields'][1]['text'][12:]
                 alarm_date = event['previous_message']['blocks'][1]['fields'][2]['text'][21:]
                 interval = event['previous_message']['blocks'][1]['fields'][3]['text'][12:]
-                user_id = utils.get_user_id(db, event['message']['team'])
-                alarm_dict = utils.get_conditional_alarm(db, user_id, content, deadline, alarm_date, interval)
+                alarm_dict = utils.get_conditional_alarm(db, user_info.user_id, content, deadline, alarm_date, interval)
                 alarm_dict['team_id'] = event['message']['team']
                 service.delete_alarm(db, alarm_dict)
 
