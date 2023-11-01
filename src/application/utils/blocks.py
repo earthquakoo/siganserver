@@ -17,11 +17,11 @@ def alarm_blocks(alarm: dict):
 				},
         	    {
 					"type": "mrkdwn",
-					"text": f"*Deadline:*\n{alarm['deadline']}",
+					"text": f"*Notification Date:*\n{alarm['alarm_date']}",
 				},
 				{
 					"type": "mrkdwn",
-					"text": f"*Notification Time:*\n{alarm['alarm_date']}",
+					"text": f"*Notification Time:*\n{alarm['alarm_time']}",
 				},
 				{
 					"type": "mrkdwn",
@@ -64,6 +64,76 @@ def alarm_blocks(alarm: dict):
 		}
 	]
     return blocks
+
+
+
+def confirm_alarm_blocks(alarm: dict):
+    blocks = [
+		{
+			"type": "header",
+			"text": {
+				"type": "plain_text",
+				"text": "Confirmation alarm has arrived!",
+				"emoji": True
+			}
+		},
+		{
+			"type": "section",
+			"fields": [
+         		{
+					"type": "mrkdwn",
+					"text": f"*Content:*\n{alarm['content']}",
+				},
+        	    {
+					"type": "mrkdwn",
+					"text": f"*Notification Date:*\n{alarm['alarm_date']}",
+				},
+				{
+					"type": "mrkdwn",
+					"text": f"*Notification Time:*\n{alarm['alarm_time']}",
+				},
+				{
+					"type": "mrkdwn",
+					"text": f"*Interval:*\n{alarm['interval']}"
+				},
+			]
+		},
+		{
+			"type": "section",
+			"text": {
+				"type": "plain_text",
+				"text": "If you have checked the alarm, press Check or Delete button to delete the alarm",
+				"emoji": True
+			}
+		},
+		{
+			"type": "actions",
+			"elements": [
+				{
+					"type": "button",
+					"text": {
+						"type": "plain_text",
+						"emoji": True,
+						"text": "Check"
+					},
+					"style": "primary",
+					"value": "click_me_123"
+				},
+				{
+					"type": "button",
+					"text": {
+						"type": "plain_text",
+						"emoji": True,
+						"text": "Delete"
+					},
+					"style": "danger",
+					"value": "click_me_123"
+				}
+			]
+		}
+	]
+    return blocks
+
 
 
 def click_delete_button_blocks(text: str):

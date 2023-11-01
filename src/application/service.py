@@ -20,11 +20,9 @@ load_dotenv('.env')
 
 
 def create_alarm(db: Session, alarm: dict):
-    post_time = datetime.strptime(alarm['alarm_date'], '%Y/%m/%d %H:%M:%S')
+    alarm_datetime = alarm['alarm_date'] + " " + f"{alarm['alarm_time']}:00"
+    post_time = datetime.strptime(alarm_datetime, '%Y/%m/%d %H:%M:%S')
     user_info = utils.get_user_info(db, alarm['team_id'])
-    
-    if alarm['interval']:
-        alarm['alarm_date'] = alarm['alarm_date'].split(" ")[1][:5]
     
     if alarm['slack_channel_name'] == "SiganBot":
         channel_id = user_info.channel_id
@@ -49,8 +47,8 @@ def create_alarm(db: Session, alarm: dict):
     new_alarm = {
         "user_id": user_info.user_id,
         "content": alarm['content'],
-        "deadline": alarm['deadline'],
         "alarm_date": alarm['alarm_date'],
+        "alarm_time": alarm['alarm_time'],
         "interval": alarm['interval'],
         "scheduled_message_id": response['scheduled_message_id'],
         "slack_channel_name": alarm['slack_channel_name'],
@@ -59,7 +57,7 @@ def create_alarm(db: Session, alarm: dict):
     }
     
     if new_alarm['confirm_alarm_date']:
-        new_alarm['sub_scheduled_message_id'] = create_confirm_alarm(db, new_alarm)
+        new_alarm['sub_scheduled_message_id'] = create_confirm_alarm(db, new_alarm, alarm['team_id'])
     
     repositories.create_alarm(db, new_alarm)
     
@@ -70,17 +68,10 @@ def delete_alarm(db: Session, data: dict):
     alarm = db.query(models.Alarm).filter(models.Alarm.alarm_id==data['alarm_id']).first()
     
     user_id = alarm.user_id
-
-    if alarm.deadline:
-        year, month, day = utils.change_deadline_to_date(alarm.deadline)
-        time = alarm.alarm_date
-        if re.match("^([0-9]){4}/([0-9]){1,2}/([0-9]){1,2}|([0-9]){1,2}/([0-9]){1,2} [0-9]{2}:[0-9]{2}:[0-9]{2}$", time):
-            time = alarm.alarm_date.split(" ")[1][:5]
-
-        deadline = datetime.strptime(f"{year}/{month}/{day} {time}:00", '%Y/%m/%d %H:%M:%S')
-        if deadline < datetime.now():
-            repositories.delete_alarm(db, alarm)
-            return {"success": True, "user_id": user_id}
+    
+    if datetime.strptime(alarm.alarm_date + " " + f"{alarm.alarm_time}:00", '%Y/%m/%d %H:%M:%S') < datetime.now():
+        repositories.delete_alarm(db, alarm)
+        return {"success": True, "user_id": user_id}
     
     post_at = utils.list_scheduled_messages(db, alarm.slack_channel_id, alarm.scheduled_message_id, data['team_id'])
     if post_at is None:
@@ -103,7 +94,7 @@ def delete_alarm(db: Session, data: dict):
     except SlackApiError as e:
         return {"success": False, "detail": e.response['error']}
     
-    if alarm.deadline:
+    if alarm.confirm_alarm_date:
         delete_confirm_alarm(db, alarm.alarm_id, data['team_id'])
     
     repositories.delete_alarm(db, alarm)
@@ -115,14 +106,6 @@ def change_content(db: Session, data: dict):
     alarm = db.query(models.Alarm).filter(models.Alarm.alarm_id==data['alarm_id']).first()
     
     alarm_dict = global_utils.sql_obj_to_dict(alarm)
-    
-    if re.match("^[0-9]{2}:[0-9]{2}$", alarm_dict['alarm_date']):
-        interval_list = alarm_dict['interval'].split(" ")
-        if interval_list[0] == "every":
-            interval_list = interval_list[1:]
-        
-        year, month, day = utils.get_date_from_shortcut(interval_list, alarm_dict['alarm_date'])
-        alarm_dict['alarm_date'] = f"{year}/{month}/{day} {alarm_dict['alarm_date']}:00"
     
     alarm_dict['content'] = data['content']
     alarm_dict['team_id'] = data['team_id']
@@ -143,95 +126,25 @@ def change_content(db: Session, data: dict):
     return {"success": True, "user_id": new_alarm['alarm']['user_id']}
 
 
-def change_deadline(db: Session, data: dict):
-    alarm = db.query(models.Alarm).filter(models.Alarm.alarm_id==data['alarm_id']).first()
-    
-    alarm_dict = global_utils.sql_obj_to_dict(alarm)
-    
-    if alarm_dict['deadline'] is None:
-        raise exceptions.DeadlineNotSet()
-    
-    cur_deadline_year, cur_deadline_month, cur_deadline_day = utils.change_deadline_to_date(alarm_dict['deadline'])
-    new_deadline_year, new_deadline_month, new_deadline_day = utils.change_deadline_to_date(data['deadline'])
-    
-    if re.match("^([0-9]){4}/([0-9]){1,2}/([0-9]){1,2}|([0-9]){1,2}/([0-9]){1,2} [0-9]{2}:[0-9]{2}:[0-9]{2}$", alarm_dict['alarm_date']):
-        alarm_time = alarm_dict['alarm_date'].split(" ")[1][:5]
-        cur_deadline_date = datetime.strptime(f"{cur_deadline_year}/{cur_deadline_month}/{cur_deadline_day} {alarm_time}:00", '%Y/%m/%d %H:%M:%S')
-        new_deadline_date = datetime.strptime(f"{new_deadline_year}/{new_deadline_month}/{new_deadline_day} {alarm_time}:00", '%Y/%m/%d %H:%M:%S')
-        cur_alarm_date = datetime.strptime(alarm_dict['alarm_date'], '%Y/%m/%d %H:%M:%S')
-
-    elif re.match("^[0-9]{2}:[0-9]{2}$", alarm_dict['alarm_date']):
-        interval_list = alarm_dict['interval'].split(" ")
-        if interval_list[0] == "every":
-            interval_list = interval_list[1:]
-        
-        year, month, day = utils.get_date_from_shortcut(interval_list, alarm_dict['alarm_date'])
-        alarm_date = f"{year}/{month}/{day} {alarm_dict['alarm_date']}:00"
-        
-        cur_deadline_date = datetime.strptime(f"{cur_deadline_year}/{cur_deadline_month}/{cur_deadline_day} {alarm_dict['alarm_date']}:00", '%Y/%m/%d %H:%M:%S')
-        new_deadline_date = datetime.strptime(f"{new_deadline_year}/{new_deadline_month}/{new_deadline_day} {alarm_dict['alarm_date']}:00", '%Y/%m/%d %H:%M:%S')
-        cur_alarm_date = datetime.strptime(alarm_date, '%Y/%m/%d %H:%M:%S')
-        
-        alarm_dict['alarm_date'] = alarm_date
-    
-    if new_deadline_date < cur_alarm_date:
-        raise exceptions.DeadlineEarlierThanAlarmSet()
-    
-    confirm_alarm_day = alarm_dict['confirm_alarm_date'] - cur_deadline_date
-    alarm_dict['confirm_alarm_date'] = new_deadline_date + confirm_alarm_day
-    alarm_dict['deadline'] = data['deadline']
-    alarm_dict['team_id'] = data['team_id']
-    
-    try:
-        deleted_alarm = delete_alarm(db, data)
-        if deleted_alarm['success'] is False:
-            return {"success": False, "detail": deleted_alarm['detail']} 
-        
-        new_alarm = create_alarm(db, alarm_dict)
-        if new_alarm['success'] is False:
-            return {"success": False, "detail": new_alarm['detail']}       
-    except Exception as e:
-        return {"success": False, "detail": e.error}
-    
-    repositories.change_deadline(db, new_alarm['alarm'], alarm)
-
-    return {"success": True, "user_id": new_alarm['alarm']['user_id']}
-
-
 def change_date(db: Session, data: dict):
     alarm = db.query(models.Alarm).filter(models.Alarm.alarm_id==data['alarm_id']).first()
 
     alarm_dict = global_utils.sql_obj_to_dict(alarm)
     
-    if alarm_dict['interval']:
-        if not re.match("^[0-9]{2}:[0-9]{2}$", data['alarm_date']):
-            raise exceptions.InvalidDateSetting()
+    if alarm.interval:
+        raise exceptions.InvalidDateSetting()
+    
+    change_alarm_date = datetime.strptime(data['alarm_date'] + " " + f"{alarm_dict['alarm_time']}:00", '%Y/%m/%d %H:%M:%S')
+    
+    if change_alarm_date < datetime.now():
+        raise exceptions.AlarmEarlierThanCurrentTime()
+    
+    if alarm.confirm_alarm_date:
+        current_alarm_date = datetime.strptime(alarm_dict['alarm_date'] + " " + f"{alarm_dict['alarm_time']}:00", '%Y/%m/%d %H:%M:%S')
+        diff_date = current_alarm_date - alarm.confirm_alarm_date
+        alarm_dict['confirm_alarm_date'] = change_alarm_date - abs(diff_date)
 
-        interval_list = alarm_dict['interval'].split(" ")
-        if interval_list[0] == "every":
-            interval_list = interval_list[1:]
-            
-        year, month, day = utils.get_date_from_shortcut(interval_list, data['alarm_date'])
-        alarm_date = f"{year}/{month}/{day} {data['alarm_date']}:00"
-    else:
-        # 시간만 변경하고자 하는 경우
-        if re.match("^[0-9]{2}:[0-9]{2}$", data['alarm_date']):
-            current_date = alarm_dict['alarm_date'].split(" ")[0]
-            alarm_date = f"{current_date} {data['alarm_date']}:00"
-        # 날짜만 변경하고자 하는 경우
-        elif re.match("^([0-9]){4}/([0-9]){1,2}/([0-9]){1,2}$", data['alarm_date']):
-            alarm_time = alarm_dict['alarm_date'].split(" ")[1]
-            alarm_date = f"{data['alarm_date']} {alarm_time}"
-        # 날짜와 시간 모두 변경하고자 하는 경우
-        elif re.match("^([0-9]){4}/([0-9]){1,2}/([0-9]){1,2} [0-9]{2}:[0-9]{2}:[0-9]{2}$", data['alarm_date']):
-            alarm_date = data['alarm_date']
-
-    alarm_time = alarm_date.split(" ")[1]
-    deadline = f"{alarm_dict['deadline']} {alarm_time}"
-    if datetime.strptime(deadline, '%Y/%m/%d %H:%M:%S') < datetime.strptime(alarm_date, '%Y/%m/%d %H:%M:%S'):
-        raise exceptions.DeadlineEarlierThanAlarmSet()
-
-    alarm_dict['alarm_date'] = alarm_date
+    alarm_dict['alarm_date'] = data['alarm_date']
     alarm_dict['team_id'] = data['team_id']
 
     try:
@@ -250,22 +163,64 @@ def change_date(db: Session, data: dict):
     return {"success": True, "user_id": new_alarm['alarm']['user_id']}
 
 
+def change_time(db: Session, data: dict):
+    alarm = db.query(models.Alarm).filter(models.Alarm.alarm_id==data['alarm_id']).first()
+
+    alarm_dict = global_utils.sql_obj_to_dict(alarm)
+    
+    if alarm.interval:
+        interval_list = alarm_dict['interval'].split(" ")
+        if interval_list[0] == "every":
+            interval_list = interval_list[1:]
+            
+        year, month, day = utils.get_date_from_shortcut(interval_list, data['alarm_time'])
+        alarm_dict['alarm_date'] = f"{year}/{month}/{day}"
+    
+    change_alarm_date = datetime.strptime(alarm_dict['alarm_date'] + " " + f"{data['alarm_time']}:00", '%Y/%m/%d %H:%M:%S')
+    
+    if change_alarm_date < datetime.now():
+        raise exceptions.AlarmEarlierThanCurrentTime()
+    
+    if alarm.confirm_alarm_date:
+        current_alarm_date = datetime.strptime(alarm_dict['alarm_date'] + " " + f"{alarm_dict['alarm_time']}:00", '%Y/%m/%d %H:%M:%S')
+        diff_date = current_alarm_date - alarm.confirm_alarm_date
+        alarm_dict['confirm_alarm_date'] = change_alarm_date - abs(diff_date)
+    
+    alarm_dict['alarm_time'] = data['alarm_time']
+    alarm_dict['team_id'] = data['team_id']
+    
+    try:
+        deleted_alarm = delete_alarm(db, data)
+        if deleted_alarm['success'] is False:
+            return {"success": False, "detail": deleted_alarm['detail']} 
+        
+        new_alarm = create_alarm(db, alarm_dict)
+        if new_alarm['success'] is False:
+            return {"success": False, "detail": new_alarm['detail']}       
+    except Exception as e:
+        return {"success": False, "detail": e.error}
+    
+    repositories.change_time(db, new_alarm['alarm'], alarm)
+
+    return {"success": True, "user_id": new_alarm['alarm']['user_id']}
+
+
+
 def change_interval(db: Session, data: dict):
     alarm = db.query(models.Alarm).filter(models.Alarm.alarm_id==data['alarm_id']).first()
       
     alarm_dict = global_utils.sql_obj_to_dict(alarm)
     
-    if re.match("^([0-9]){4}/([0-9]){1,2}/([0-9]){1,2} [0-9]{2}:[0-9]{2}:[0-9]{2}$", alarm_dict['alarm_date']):
+    if not alarm.interval:
         raise exceptions.InvalidIntervalSetting()
     
     interval_list = data['interval'].split(" ")
     if interval_list[0] == "every":
         interval_list = interval_list[1:]
     
-    year, month, day = utils.get_date_from_shortcut(interval_list, alarm_dict['alarm_date'])
-    alarm_date = f"{year}/{month}/{day} {alarm_dict['alarm_date']}:00"
+    year, month, day = utils.get_date_from_shortcut(interval_list, alarm_dict['alarm_time'])
     
-    alarm_dict['alarm_date'] = alarm_date
+    alarm_dict['alarm_date'] = f"{year}/{month}/{day}"
     alarm_dict['interval'] = data['interval']
     alarm_dict['team_id'] = data['team_id']
     
@@ -285,15 +240,15 @@ def change_interval(db: Session, data: dict):
     return {"success": True, "user_id": new_alarm['alarm']['user_id']}
 
 
-def create_confirm_alarm(db: Session, alarm: dict):
+def create_confirm_alarm(db: Session, alarm: dict, team_id: str):
     post_time = alarm['confirm_alarm_date']
     
-    client = utils.get_client(db, alarm['team_id'])
+    client = utils.get_client(db, team_id)
     
     response = client.chat_scheduleMessage(
         channel = alarm['slack_channel_id'],
         text = alarm['content'],
-        blocks = blocks.alarm_blocks(alarm),
+        blocks = blocks.confirm_alarm_blocks(alarm),
         post_at = int(post_time.timestamp()),
     )
     return response['scheduled_message_id']
@@ -317,16 +272,9 @@ def repeat_schedule_message(db: Session, repeat_alarm: dict, team_id: str):
     if interval_list[0] == "every":
         interval_list = interval_list[1:]
         
-    year, month, day = utils.get_date_from_shortcut(interval_list, alarm.alarm_date)
-    alarm_date = f"{year}/{month}/{day} {alarm.alarm_date}:00"
+    year, month, day = utils.get_date_from_shortcut(interval_list, alarm.alarm_time)
+    alarm_date = f"{year}/{month}/{day} {alarm.alarm_time}:00"
     new_alarm_date = datetime.strptime(alarm_date, '%Y/%m/%d %H:%M:%S')
-    
-    if repeat_alarm['deadline']:
-        deadline_year, deadline_month, deadline_day = utils.change_deadline_to_date(repeat_alarm['deadline'])
-        deadline_date = datetime.strptime(f"{deadline_year}/{deadline_month}/{deadline_day} {alarm.alarm_date}:00", '%Y/%m/%d %H:%M:%S')
-
-        if deadline_date < new_alarm_date:
-            return None
     
     client = utils.get_client(db, team_id)
     
@@ -340,6 +288,7 @@ def repeat_schedule_message(db: Session, repeat_alarm: dict, team_id: str):
     except SlackApiError as e:
         return {"success": False, "detail": e.response['error']}
     
+    repeat_alarm['alarm_date'] = f"{year}/{month}/{day}"
     repeat_alarm['scheduled_message_id'] = schedule_message['scheduled_message_id']
     
     repositories.repeat_schedule_message(db, repeat_alarm, alarm)

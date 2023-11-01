@@ -53,21 +53,21 @@ def change_content(data: schemas.ChangeContentIn, db: Session = Depends(get_db))
     if resp['success'] is False:
         raise exceptions.SlackApiError(error=resp['detail'])
     return schemas.AlarmResponse(user_id=resp['user_id'])
-    
-    
-@router.patch('/change_deadline', status_code=status.HTTP_200_OK, response_model=schemas.AlarmResponse)
-def change_deadline(data: schemas.ChangeDeadlineIn, db: Session = Depends(get_db)):
-    
-    resp = service.change_deadline(db, data.model_dump())
-    if resp['success'] is False:
-        raise exceptions.SlackApiError(error=resp['detail'])
-    return schemas.AlarmResponse(user_id=resp['user_id'])
 
 
 @router.patch('/change_date', status_code=status.HTTP_200_OK, response_model=schemas.AlarmResponse)
 def change_date(data: schemas.ChangeDateIn, db: Session = Depends(get_db)):
     
     resp = service.change_date(db, data.model_dump())
+    if resp['success'] is False:
+        raise exceptions.SlackApiError(error=resp['detail'])
+    return schemas.AlarmResponse(user_id=resp['user_id'])
+
+
+@router.patch('/change_time', status_code=status.HTTP_200_OK, response_model=schemas.AlarmResponse)
+def change_time(data: schemas.ChangeTimeIn, db: Session = Depends(get_db)):
+    
+    resp = service.change_time(db, data.model_dump())
     if resp['success'] is False:
         raise exceptions.SlackApiError(error=resp['detail'])
     return schemas.AlarmResponse(user_id=resp['user_id'])

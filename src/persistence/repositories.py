@@ -24,17 +24,17 @@ def change_content(db: Session, change_alarm: dict, alarm_obj):
     db.commit()
 
 
-def change_deadline(db: Session, change_alarm: dict, alarm_obj):
+def change_date(db: Session, change_alarm: dict, alarm_obj):
     
-    setattr(alarm_obj, 'deadline', change_alarm['deadline'])
-    setattr(alarm_obj, 'scheduled_message_id', change_alarm['scheduled_message_id'])
+    setattr(alarm_obj, 'alarm_date', change_alarm['alarm_date'])
+    setattr(alarm_obj, 'scheduled_message_id',change_alarm['scheduled_message_id'])
     db.commit()
 
 
-def change_date(db: Session, change_alarm: dict, alarm_obj):
+def change_time(db: Session, change_alarm: dict, alarm_obj):
     
-    setattr(alarm_obj, 'alarm_date',change_alarm['alarm_date'])
-    setattr(alarm_obj, 'scheduled_message_id',change_alarm['scheduled_message_id'])
+    setattr(alarm_obj, 'alarm_time', change_alarm['alarm_time'])
+    setattr(alarm_obj, 'scheduled_message_id', change_alarm['scheduled_message_id'])
     db.commit()
 
 

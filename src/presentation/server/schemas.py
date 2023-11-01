@@ -8,8 +8,8 @@ sys.path.append('.')
 class AlarmCreateIn(BaseModel):
     team_id: str
     content: str
-    deadline: Union[str, None] = None
     alarm_date: str
+    alarm_time: str
     interval: Union[str, None] = None
     confirm_alarm_date: Union[datetime, None] = None
     slack_channel_name: str
@@ -29,19 +29,19 @@ class ChangeContentIn(BaseModel):
     alarm_id: int
     content: str
     team_id: str
-
-
-class ChangeDeadlineIn(BaseModel):
-    alarm_id: int
-    deadline: str
-    team_id: str
     
 
 class ChangeDateIn(BaseModel):
     alarm_id: int
     alarm_date: str
     team_id: str
-    
+
+
+class ChangeTimeIn(BaseModel):
+    alarm_id: int
+    alarm_time: str
+    team_id: str
+
 
 class ChangeIntervalIn(BaseModel):
     alarm_id: int

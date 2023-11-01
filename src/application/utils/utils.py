@@ -50,9 +50,7 @@ def get_all_alarms(db: Session, user_id: str):
     return alarm_dict_list
 
 
-def get_conditional_alarm(db: Session, user_id: int, content: str, deadline: str, alarm_date: str, interval: str):
-    if deadline == "None":
-        deadline = None
+def get_conditional_alarm(db: Session, user_id: int, content: str, alarm_time: str, interval: str):
     if interval == "None":
         interval = None
     alarm = db.query(models.Alarm).\
@@ -60,21 +58,12 @@ def get_conditional_alarm(db: Session, user_id: int, content: str, deadline: str
             and_(
                 models.Alarm.user_id==user_id,
                 models.Alarm.content==content,
-                models.Alarm.deadline==deadline,
-                models.Alarm.alarm_date==alarm_date,
+                models.Alarm.alarm_time==alarm_time,
                 models.Alarm.interval==interval,
                 )
             ).first()
     
     return global_utils.sql_obj_to_dict(alarm)
-
-
-def change_deadline_to_date(deadline: str):
-    year, month, day = datetime.now().year, None, None
-    date_list = list(map(int, deadline.split('/')))
-    year, month, day = date_list
-
-    return year, month, day
 
 
 def get_date_from_shortcut(interval_day: list, time: str):

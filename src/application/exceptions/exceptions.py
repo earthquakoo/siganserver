@@ -47,7 +47,7 @@ class InvalidDateSetting(BaseCustomException):
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="If the interval is set, you can only enter the time."
+            detail="The date cannot be changed for alarms with interval set. Please change the interval."
         )
 
 
@@ -55,15 +55,15 @@ class InvalidIntervalSetting(BaseCustomException):
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You cannot set an interval for an alarm with a date and time specified."
+            detail="No interval is set."
         )
         
 
-class DeadlineEarlierThanAlarmSet(BaseCustomException):
+class AlarmEarlierThanCurrentTime(BaseCustomException):
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot set a deadline earlier than the current date."
+            detail="Cannot set alarm earlier than current time."
         )
 
 
